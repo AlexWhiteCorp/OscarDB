@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../headers/oscardb.h"
+#include "../headers/gc.h"
 
 struct stat st = {0};
 
@@ -45,7 +46,6 @@ struct S_Index{
 struct DataBase* db;
 char* db_path;
 
-char* str_cat(char* str1, char* str2);
 int create_file(char* name, char* type);
 
 void create_db(char* db_name)
@@ -63,12 +63,21 @@ void create_db(char* db_name)
     }
 }
 
-
 void connect(char* db_name)
 {
+    db_path = str_cat(db_stotage, db_name);
+    db_path = str_cat(db_path, "/");
     db = malloc(sizeof(struct DataBase));
     db->master = malloc(sizeof(struct Master));
     db->slave = malloc(sizeof(struct Slave));
+
+    db->master->ind = str_cat("users", ".ind");
+    db->master->fl = str_cat("users", ".fl");
+    db->master->record_s = sizeof(struct User);
+
+    db->slave->ind = str_cat("user_comments", ".ind");
+    db->slave->fl = str_cat("user_comments", ".fl");
+    db->slave->record_s = sizeof(struct User_Comment);
 }
 
 void create_table(char* t_name, int t_type)
@@ -133,6 +142,17 @@ void create_table(char* t_name, int t_type)
 
 void insert_m(struct User* user)
 {
+    if(strlen(user->email) == 0)
+    {
+        printf("\x1b[31mEmail cannot be empty!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user->pass) == 0)
+    {
+        printf("\x1b[31mPassword cannot be empty!\x1b[0m\n");
+        return;;
+    }
+
     FILE *index_table = fopen(str_cat(db_path, db->master->ind), "r+b");
     if(index_table == NULL)
     {
@@ -168,7 +188,16 @@ void insert_m(struct User* user)
     fwrite(index, sizeof(struct Index), 1, index_table);
     fclose(index_table);
 
-    printf("INSERT User(id = '%i', email = '%s', password = '%s') - Successful!\n", user->id, user->email, user->pass);
+    // дескриптор файла
+    //handle = fileno(tf);
+
+    // размер файла
+    //fs = filelength(handle);
+
+    // обрезаем последнюю запись
+    //chsize(handle,fs-s);
+
+    //printf("INSERT User(id = '%i', email = '%s', password = '%s') - Successful!\n", user->id, user->email, user->pass);
 }
 
 struct User* get_m(int m_pk)
@@ -193,12 +222,28 @@ struct User* get_m(int m_pk)
             return user;
         }
     }
-    printf("User with id = '%i' doesn't exist!\n", m_pk);
+    //printf("User with id = '%i' doesn't exist!\n", m_pk);
     return NULL;
 }
 
 void update_m(struct User* user)
 {
+    if(user->id < 1)
+    {
+        printf("\x1b[31mIncorrect user_id!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user->email) == 0)
+    {
+        printf("\x1b[31mEmail cannot be empty!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user->pass) == 0)
+    {
+        printf("\x1b[31mPassword cannot be empty!\x1b[0m\n");
+        return;
+    }
+
     if(get_m(user->id) == NULL)
     {
         printf("User with id = '%i' doesn't exist!\n", user->id);
@@ -231,6 +276,12 @@ void update_m(struct User* user)
 
 void delete_m(int m_pk)
 {
+    if(m_pk < 1)
+    {
+        printf("\x1b[31mIncorrect ID!\x1b[0m\n");
+        return;
+    }
+
     if(get_m(m_pk) == NULL)
     {
         printf("User with id = '%i' doesn't exist!\n", m_pk);
@@ -360,6 +411,22 @@ void show_m(int real)
 
 void insert_s(struct User_Comment* user_comment)
 {
+    if(strlen(user_comment->text) == 0)
+    {
+        printf("\x1b[31mText cannot be empty!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user_comment->date) == 0)
+    {
+        printf("\x1b[31mDate cannot be empty!\x1b[0m\n");
+        return;
+    }
+
+    if(get_m(user_comment->user_id) == NULL)
+    {
+        printf("User with id = '%i' doesn't exist!\n", user_comment->user_id);
+        return;
+    }
     if(get_s(user_comment->user_id, user_comment->comment_id) != NULL)
     {
         printf("User's Comment with user.id = '%i' and comment.id = '%i' already exist!\n", user_comment->user_id, user_comment->comment_id);
@@ -392,7 +459,6 @@ void insert_s(struct User_Comment* user_comment)
     }
     fseek(user_comments, 0, SEEK_END);
     index->ind = ftell(user_comments) / sizeof(struct User_Comment);
-    rewind(user_comments);
 
     fwrite(user_comment, sizeof(struct User_Comment), 1, user_comments);
     fclose(user_comments);
@@ -400,10 +466,22 @@ void insert_s(struct User_Comment* user_comment)
     fseek(index_table, 0, SEEK_END);
     fwrite(index, sizeof(struct S_Index), 1, index_table);
     fclose(index_table);
+    printf("INSERT User's Comment(user_id = '%i', comment_id = '%i', text = '%s', date = '%s') - Successful!\n",
+            user_comment->user_id, user_comment->comment_id, user_comment->text, user_comment->date);
 }
 
 struct User_Comment* get_s(int m_pk, int s_pk)
 {
+    if(m_pk < 1)
+    {
+        printf("\x1b[31mIncorrect user_id!\x1b[0m\n");
+        return NULL;
+    }
+    if(s_pk < 1)
+    {
+        printf("\x1b[31mIncorrect commend_id!\x1b[0m\n");
+        return NULL;
+    }
     FILE *index_t = fopen(str_cat(db_path, db->slave->ind), "rb");
     if(index_t == NULL)
     {
@@ -424,12 +502,32 @@ struct User_Comment* get_s(int m_pk, int s_pk)
             return user_comment;
         }
     }
-    printf("User's Comment with user.id = '%i' and comment.id = '%i' doesn't exist!\n", m_pk, s_pk);
+    //printf("User's Comment with user.id = '%i' and comment.id = '%i' doesn't exist!\n", m_pk, s_pk);
     return NULL;
 }
 
 void update_s(struct User_Comment* user_comment)
 {
+    if(user_comment->user_id < 1)
+    {
+        printf("\x1b[31mIncorrect user_id!\x1b[0m\n");
+        return;
+    }
+    if(user_comment->user_id < 1)
+    {
+        printf("\x1b[31mIncorrect commend_id!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user_comment->text) == 0)
+    {
+        printf("\x1b[31mText cannot be empty!\x1b[0m\n");
+        return;
+    }
+    if(strlen(user_comment->date) == 0)
+    {
+        printf("\x1b[31mDate cannot be empty!\x1b[0m\n");
+        return;
+    }
     if(get_s(user_comment->user_id, user_comment->comment_id) == NULL)
     {
         printf("User's Comment with user.id = '%i' and comment.id = '%i' doesn't exist!\n", user_comment->user_id, user_comment->comment_id);
@@ -453,6 +551,9 @@ void update_s(struct User_Comment* user_comment)
             fseek(user_comments, index->ind * sizeof(struct User_Comment), SEEK_SET);
             fwrite(user_comment, sizeof(struct User_Comment), 1, user_comments);
             fclose(user_comments);
+
+            printf("UPDATE User's Comment(user_id = '%i', comment_id = '%i', text = '%s', date = '%s') - Successful!\n",
+                   user_comment->user_id, user_comment->comment_id, user_comment->text, user_comment->date);
             return;
         }
     }
@@ -461,6 +562,17 @@ void update_s(struct User_Comment* user_comment)
 
 void delete_s(int m_pk, int s_pk)
 {
+    if(m_pk < 1)
+    {
+        printf("\x1b[31mIncorrect user_id!\x1b[0m\n");
+        return;
+    }
+    if(s_pk < 1)
+    {
+        printf("\x1b[31mIncorrect commend_id!\x1b[0m\n");
+        return;
+    }
+
     if(get_s(m_pk, s_pk) == NULL)
     {
         printf("User's Comment with user.id = '%i' and comment.id = '%i' doesn't exist!\n", m_pk, s_pk);
@@ -474,7 +586,7 @@ void delete_s(int m_pk, int s_pk)
         return;
     }
 
-    struct T_Header* header = malloc(sizeof(header));
+    struct T_Header* header = malloc(sizeof(struct S_Index));
     fread(header, sizeof(struct S_Index), 1, index_t);
     header->records_count = header->records_count - 1;
     rewind(index_t);
@@ -491,8 +603,10 @@ void delete_s(int m_pk, int s_pk)
         {
             index->exist = 1;
             //skip header
-            fseek(index_t, sizeof(struct S_Index), SEEK_SET);
+            fseek(index_t, -sizeof(struct S_Index), SEEK_CUR);
             fwrite(index, sizeof(struct S_Index), 1, index_t);
+
+            printf("DELETE User's Comment(user_id = '%i', comment_id = '%i') - Successful!\n", m_pk, s_pk);
             break;
         }
     }
@@ -539,7 +653,7 @@ void show_s(int real)
 
             fseek(user_comments, index->ind * sizeof(struct User_Comment), SEEK_SET);
             fread(user_comment, sizeof(struct User_Comment), 1, user_comments);
-            printf("%15i | %7i | %11i | %7s | %7s |\n", i, user_comment->user_id, user_comment->comment_id, user_comment->text, "");
+            printf("%15i | %7i | %11i | %7s | %7s |\n", i, user_comment->user_id, user_comment->comment_id, user_comment->text, user_comment->date);
         }
         else i--;
 
@@ -552,6 +666,133 @@ void show_s(int real)
 }
 
 //  <S L A V E/>
+
+void clean_master()
+{
+    FILE *index_table = fopen(str_cat(db_path, db->master->ind), "r+b");
+    if(index_table == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->master->ind);
+        return;
+    }
+
+    struct T_Header* header = malloc(sizeof(struct Index));
+    fread(header, sizeof(struct Index), 1, index_table);
+
+    struct Index* index = malloc(sizeof(struct Index));
+    FILE *users = fopen(str_cat(db_path, db->master->fl), "r+b");
+    if(users == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->master->fl);
+        return;
+    }
+    struct User* user = malloc(sizeof(struct User));
+
+    int read_index = 1, rewrite_index = -1;
+    for(read_index; read_index > 0; read_index++)
+    {
+        fread(index, sizeof(struct Index), 1, index_table);
+        if(feof(index_table)) break;
+        if(index->exist != 0)
+        {
+            if(rewrite_index == -1)rewrite_index = read_index;
+        }
+        else{
+            if(rewrite_index != -1)
+            {
+                fseek(users, index->ind * sizeof(struct User), SEEK_SET);
+                fread(user, sizeof(struct User), 1, users);
+                printf("%i\n", user->id);
+                fseek(users, (rewrite_index - 1) * sizeof(struct User), SEEK_SET);
+                fwrite(user, sizeof(struct User), 1, users);
+
+                index->ind = rewrite_index - 1;
+                fseek(index_table, rewrite_index * sizeof(struct Index), SEEK_SET);
+                fwrite(index, sizeof(struct Index), 1, index_table);
+                fseek(index_table, (read_index + 1) * sizeof(struct Index), SEEK_SET);
+
+                rewrite_index++;
+            }
+        }
+    }
+    fseek(index_table, 0, SEEK_SET);
+    fwrite(header, sizeof(struct Index), 1, index_table);
+
+    int handle = fileno(index_table);
+    chsize(handle,(header->records_count + 1) * sizeof(struct Index));
+
+    handle = fileno(users);
+    chsize(handle,(header->records_count) * sizeof(struct User));
+
+    fclose(index_table);
+    fclose(users);
+}
+
+void clean_slave()
+{
+    FILE *index_table = fopen(str_cat(db_path, db->slave->ind), "r+b");
+    if(index_table == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->slave->ind);
+        return;
+    }
+
+    struct T_Header* header = malloc(sizeof(struct S_Index));
+    fread(header, sizeof(struct S_Index), 1, index_table);
+
+    struct S_Index* index = malloc(sizeof(struct S_Index));
+    FILE *user_comments = fopen(str_cat(db_path, db->slave->fl), "r+b");
+    if(user_comments == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->slave->fl);
+        return;
+    }
+    struct User_Comment* user_comment = malloc(sizeof(struct User_Comment));
+
+    int read_index = 1, rewrite_index = -1;
+    for(read_index; read_index > 0; read_index++)
+    {
+        fread(index, sizeof(struct S_Index), 1, index_table);
+        if(feof(index_table)) break;
+        if(index->exist != 0)
+        {
+            if(rewrite_index == -1)rewrite_index = read_index;
+        }
+        else{
+            if(rewrite_index != -1)
+            {
+                fseek(user_comments, index->ind * sizeof(struct User_Comment), SEEK_SET);
+                fread(user_comment, sizeof(struct User_Comment), 1, user_comments);
+                fseek(user_comments, (rewrite_index - 1) * sizeof(struct User_Comment), SEEK_SET);
+                fwrite(user_comment, sizeof(struct User_Comment), 1, user_comments);
+
+                index->ind = rewrite_index - 1;
+                fseek(index_table, rewrite_index * sizeof(struct S_Index), SEEK_SET);
+                fwrite(index, sizeof(struct S_Index), 1, index_table);
+                fseek(index_table, (read_index + 1) * sizeof(struct S_Index), SEEK_SET);
+
+                rewrite_index++;
+            }
+        }
+    }
+    fseek(index_table, 0, SEEK_SET);
+    fwrite(header, sizeof(struct S_Index), 1, index_table);
+
+    int handle = fileno(index_table);
+    chsize(handle,(header->records_count + 1) * sizeof(struct S_Index));
+
+    handle = fileno(user_comments);
+    chsize(handle,(header->records_count) * sizeof(struct User_Comment));
+
+    fclose(index_table);
+    fclose(user_comments);
+}
+
+void call_gc()
+{
+    clean_slave();
+    clean_master();
+}
 
 char* str_cat(char* str1, char* str2)
 {
