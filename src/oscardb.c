@@ -2,7 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../headers/oscardb.h"
-#include "../headers/gc.h"
 
 struct stat st = {0};
 
@@ -667,6 +666,7 @@ void show_s(int real)
 
 //  <S L A V E/>
 
+// <G A R B A G E  C O L L E C T O R>
 void clean_master()
 {
     FILE *index_table = fopen(str_cat(db_path, db->master->ind), "r+b");
@@ -793,6 +793,7 @@ void call_gc()
     clean_slave();
     clean_master();
 }
+// <G A R B A G E  C O L L E C T O R/>
 
 char* str_cat(char* str1, char* str2)
 {
