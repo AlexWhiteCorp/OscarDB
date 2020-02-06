@@ -404,6 +404,21 @@ void show_m(int real)
     fclose(users);
 }
 
+int count_m_total()
+{
+    FILE *index_t = fopen(str_cat(db_path, db->master->ind), "r+b");
+    if(index_t == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->master->ind);
+        return - 1;
+    }
+
+    struct T_Header* header = malloc(sizeof(header));
+    fread(header, sizeof(struct Index), 1, index_t);
+    fclose(index_t);
+    return header->records_count;
+}
+
 //  <M A S T E R/>
 
 //   <S L A V E>
@@ -662,6 +677,49 @@ void show_s(int real)
 
     fclose(index_t);
     fclose(user_comments);
+}
+
+int count_s_total()
+{
+    FILE *index_t = fopen(str_cat(db_path, db->slave->ind), "r+b");
+    if(index_t == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->slave->ind);
+        return - 1;
+    }
+
+    struct T_Header* header = malloc(sizeof(struct S_Index));
+    fread(header, sizeof(struct S_Index), 1, index_t);
+    fclose(index_t);
+    return header->records_count;
+}
+
+int count_s(int m_pk)
+{
+    FILE* s_index_t = fopen(str_cat(db_path, db->slave->ind), "r+b");
+    if(s_index_t == NULL)
+    {
+        printf("Cannot open file '%s'.\n", db->slave->ind);
+        return -1;
+    }
+
+    int count = 0;
+
+    //skip header
+    fseek(s_index_t, sizeof(struct S_Index), SEEK_SET);
+
+    struct S_Index* s_index = malloc(sizeof(struct S_Index));
+    for(int j = 1; j > 0; j++)
+    {
+        fread(s_index, sizeof(struct S_Index), 1 , s_index_t);
+        if(feof(s_index_t)) break;
+        if(s_index->m_pk == m_pk)
+        {
+            count++;
+        }
+    }
+    fclose(s_index_t);
+    return count;
 }
 
 //  <S L A V E/>

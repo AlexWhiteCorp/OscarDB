@@ -12,6 +12,7 @@ const char* UPDATE_M = "UPDATE-M";
 const char* DELETE_M = "DELETE-M";
 const char* SHOW_M = "SHOW-M";
 const char* SHOW_M_REAL = "SHOW-M-REAL";
+const char* COUNT_M_TOTAL = "COUNT-M-TOTAL";
 
 const char* INSERT_S = "INSERT-S";
 const char* GET_S = "GET-S";
@@ -19,6 +20,8 @@ const char* UPDATE_S = "UPDATE-S";
 const char* DELETE_S = "DELETE-S";
 const char* SHOW_S = "SHOW-S";
 const char* SHOW_S_REAL = "SHOW-S-REAL";
+const char* COUNT_S_TOTAL = "COUNT-S-TOTAL";
+const char* COUNT_S = "COUNT-S";
 
 const char* CALL_GC = "CALL-GC";
 
@@ -98,6 +101,13 @@ int main() {
             show_m(0);
             continue;
         }
+        if(strcmp(input, COUNT_M_TOTAL) == 0)
+        {
+            printf("Count: %i\n", count_m_total());
+            continue;
+        }
+
+
         if(strcmp(input, INSERT_S) == 0)
         {
             struct User_Comment* u_c = malloc(sizeof(struct User_Comment));
@@ -155,6 +165,20 @@ int main() {
         if(strcmp(input, SHOW_S_REAL) == 0)
         {
             show_s(0);
+            continue;
+        }
+        if(strcmp(input, COUNT_S_TOTAL) == 0)
+        {
+            printf("Count: %i\n", count_s_total());
+            continue;
+        }
+        if(strcmp(input, COUNT_S) == 0)
+        {
+            int m_id;
+            printf("user_id(PK): ");
+            scanf("%d", &m_id);
+            gets(input);
+            printf("Count: %i\n", count_s(m_id));
             continue;
         }
         if(strcmp(input, CALL_GC) == 0)
